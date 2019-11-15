@@ -16,7 +16,9 @@ SYMBOL_TO_BIT_DICT = {'/': 0b0000,
                       ' ': 0b0001,
                       '#': 0b0010,
                       'X': 0b0101,
-                      '?': 0b0100}
+                      '?': 0b0100,
+                      '$': 0b1000,
+                      'O': 0b1001}
 
 
 # 0bxx00 - unknown cell                       '/'
@@ -411,14 +413,18 @@ class Map:
             return banedCell, waitingTime, myWaitingTime, (ax2, ay2), botId
         return None
 
+    def getChunksDict(self):
+        return_dict = {}
+        for key in self._chunks.keys():
+            return_dict[key] = self._chunks[key]
+        return return_dict
+
     def updateChunksFromDict(self, chunks_dict):
         for key in chunks_dict.keys():
-
             chunk = self._chunks.get(key)
             if not chunk:
                 chunk = Chunk(CHUNK_SIZE)
                 self._chunks[key] = chunk
-
             self._chunks[key]._grid = chunks_dict[key]
 
 
@@ -451,21 +457,24 @@ class Map:
                 val = self.getCell((x, y))
                 if val == 0b0000:
                     data[-1][x - minX] = '/'
-                if val == 0b0100:
+                elif val == 0b0100:
                     data[-1][x - minX] = '?'
-                if val == 0b0001:
+                elif val == 0b0001:
                     data[-1][x - minX] = ' '
-                if val == 0b0101:
+                elif val == 0b0101:
                     data[-1][x - minX] = 'X'
-                if val == 0b0010 or val == 0b0110:
+                elif val == 0b0010 or val == 0b0110:
                     data[-1][x - minX] = '#'
+                elif val == 0b1000:
+                    data[-1][x-minX] = '$'
+                elif val == 0b1001:
+                    data[-1][x-minX] = 'O'
 
         return data
 
     def getChunksFromFile(self, fileName):
         f = open(fileName, "r")
         fileContent = f.read().split('\n')
-        print fileContent
         if fileContent[-1] == '':
             fileContent.remove('')
 
@@ -477,13 +486,26 @@ class Map:
                 self.setBitCell((symbolNumb, lineNumb), SYMBOL_TO_BIT_DICT[symbol])
         return self._chunks
 
+    def getBotTargetCoords(self, fileName):
+        target_list = []
+        bot_coord = None
+        chunkGrid = self.printToText()
+        for lineNumb in range(len(chunkGrid)):
+            for symbNumb in range(len(chunkGrid[lineNumb])):
+                if chunkGrid[lineNumb][symbNumb] == '$':
+                    target_list.append((lineNumb, symbNumb))
+                if chunkGrid[lineNumb][symbNumb] == 'O':
+                    bot_coord = (lineNumb, symbNumb)
+        if bot_coord is None:
+            bot_coord = (0, 0)
+        return target_list, bot_coord
+
     def getChunkGridFormFile(self, fileName):
         mapChunks = self.getChunksFromFile(fileName)
         chunksGrid = {} #{chunk coords: chunk grid}
 
         for key in mapChunks.keys():
             chunksGrid[key] = str(mapChunks[key]._grid)
-
         return chunksGrid
 
     def getChunkSize(self, chunkFront):
