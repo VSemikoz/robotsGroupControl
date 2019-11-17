@@ -4,6 +4,7 @@ from threading import Thread
 from Threads import Threads
 from Message import Message
 from map_storage import Map
+from MatrixCalcModule import MatrixCalcModule
 
 
 class Socket:
@@ -45,7 +46,11 @@ class Client(Socket):
         self.pos = None
         self.target_list = []
         self.map_storage = Map()
-        self.bot_pos_dict = {} #{bot_id: bot_pos}
+        self.target_dstr_storage = MatrixCalcModule()
+        self.drone_ids = []
+
+        # {trg_pos : (path)}
+        self.trg_path = {}
 
     def run_client(self):
         return_queue = Queue.Queue()
@@ -57,6 +62,7 @@ class Client(Socket):
 
         self.map_storage.getChunkGridFormFile(self.map_name)
         self.target_list, self.pos = self.map_storage.getBotTargetCoords(self.map_name)
+
 
         msg = Message('server', 4, 'client_hello_msg')
         udp_socket.sendto(str(msg), self.address)
@@ -97,14 +103,24 @@ class Client(Socket):
             return
 
         if user_input == "trg_dst":
-            self.bots_pos_request(udp_socket)
-            print "bots position request sent"
+
+            for trg_pos in self.target_list:
+                a_star_wafe = self.map_storage.AStar(self.pos, trg_pos, [])
+                path = self.map_storage.getPathFromDistance(a_star_wafe, trg_pos, [])
+                self.trg_path[trg_pos] = path
+
+            self.target_dstr_storage.initSelfMatrixValues(self.drone_ids, self.id, self.target_list, 100)
+            self.target_dstr_storage.setDroneTargetsPathTimes(self.trg_path, 10, 45)
+            self.target_dstr_storage.selfStringMatrixCalculation(self.id)
+            self.bots_matrix_tring_request(udp_socket)
+            print "bots matrix string request sent"
             return
 
-    def bots_pos_request(self, udp_socket):
-        request_data = str(self.pos)
+    def bots_matrix_tring_request(self, udp_socket):
+        request_data = "%s/%s" % (str(self.id), str(self.target_dstr_storage.getSelfMatrixString()))
         msg = Message('all', 7, request_data)
         udp_socket.sendto(str(msg), self.address)
+        self.target_dstr_storage = MatrixCalcModule()  # TODO: delete
 
     def get_map(self):
         handle = open("map1.mapAI", "r")

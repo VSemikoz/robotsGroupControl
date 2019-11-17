@@ -428,7 +428,6 @@ class Map:
             self._chunks[key]._grid = chunks_dict[key]
 
 
-
     # convert map from self._chunk to readable map
     def printToText(self):
         keys = self._chunks.keys()
@@ -493,9 +492,9 @@ class Map:
         for lineNumb in range(len(chunkGrid)):
             for symbNumb in range(len(chunkGrid[lineNumb])):
                 if chunkGrid[lineNumb][symbNumb] == '$':
-                    target_list.append((lineNumb, symbNumb))
+                    target_list.append((symbNumb, lineNumb))
                 if chunkGrid[lineNumb][symbNumb] == 'O':
-                    bot_coord = (lineNumb, symbNumb)
+                    bot_coord = (symbNumb, lineNumb)
         if bot_coord is None:
             bot_coord = (0, 0)
         return target_list, bot_coord
@@ -608,6 +607,7 @@ class Map:
         return optimizePathToGoal
 
     def AStar(self, botPosition, goal, banedCells):
+
         if goal in banedCells:
             banedCells.remove(goal)
         if botPosition in banedCells:
@@ -680,7 +680,7 @@ class Map:
         return False
 
     def cellIsPassable(self, pos):
-        if self.getCell(pos) == 0b0001:
+        if self.getCell(pos) == 0b0001 or self.getCell(pos) == 0b1000:
             return True
         return False
 
@@ -704,6 +704,28 @@ class Map:
             currentRadius += 1
             if currentRadius > CHUNK_SIZE:
                 return None
+
+    def getPathFromDistance(self, distance, target, banedCells):
+        path = [target]
+        current = target
+
+        while True:
+            leftElem = (current[0] - 1, current[1])
+            rightElem = (current[0] + 1, current[1])
+            upElem = (current[0], current[1] - 1)
+            downElem = (current[0], current[1] + 1)
+            neighborElem = [leftElem, rightElem, upElem, downElem]
+            if distance[current] == 0:
+                path.pop(0)
+                optimize_path = self.optimizePath(path)
+                return optimize_path
+
+            for elem in neighborElem:
+                if elem in distance.keys():
+                    if distance[elem] + 1 == distance[current] and elem not in banedCells:
+                        path.insert(0, elem)
+                        current = elem
+                        break
 
     def cellIsPassableForChunkWave(self, cell, banedCells, chunkSize):
         if not self.wallIsNear(cell) and self.checkCellInsideChunk(chunkSize, cell) and (cell not in banedCells):
@@ -793,28 +815,6 @@ class Map:
         distance = (abs(botX - cellX) ** 2 + abs(botY - cellY) ** 2) ** 0.5
 
         return distance < BOT_ECHO_RANGE * 0.9
-
-    @staticmethod
-    def getPathFromDistance(distance, target, banedCells):
-        path = [target]
-        current = target
-
-        while True:
-            leftElem = (current[0] - 1, current[1])
-            rightElem = (current[0] + 1, current[1])
-            upElem = (current[0], current[1] - 1)
-            downElem = (current[0], current[1] + 1)
-            neighborElem = [leftElem, rightElem, upElem, downElem]
-            if distance[current] == 0:
-                path.pop(0)
-                return path
-
-            for elem in neighborElem:
-                if elem in distance.keys():
-                    if distance[elem] + 1 == distance[current] and elem not in banedCells:
-                        path.insert(0, elem)
-                        current = elem
-                        break
 
     @staticmethod
     def cellsAroundCell(cell):

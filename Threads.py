@@ -4,6 +4,7 @@ from threading import Thread
 from map_storage import Map
 from Message import Message
 import ast
+from MatrixCalcModule import MatrixCalcModule
 
 
 class Threads():
@@ -41,7 +42,7 @@ class Threads():
 
                 if not return_queue.empty():
                     client_object.id = return_queue.get()
-                    client_object.bot_pos_dict[client_object.id] = client_object.pos
+                    client_object.drone_ids = [client_object.id]
                     print 'Get unique id from serve: %s' % client_object.id
 
     def message_queue_process(self, messages_queue, return_queue, client_object, udp_socket, address):
@@ -66,24 +67,51 @@ class Threads():
             return_queue.put(msg[2])
             return
 
-        if int(msg[1]) == 7:  # position_request
-            response_data = "%s.%s" % (client_object.id, client_object.pos)
+        if int(msg[1]) == 7:  # matrix_string_request
+            client_object.target_dstr_storage = MatrixCalcModule()#TODO: delete
+            data = msg[2].split('/')
+            client_object.target_dstr_storage.appendMatrixString(ast.literal_eval(data[1]), data[0])
+
+            for trg_pos in client_object.target_list:
+                a_star_wave = client_object.map_storage.AStar(client_object.pos, trg_pos, [])
+                path = client_object.map_storage.getPathFromDistance(a_star_wave, trg_pos, [])
+                client_object.trg_path[trg_pos] = path
+            print "AStar path ready"
+            client_object.target_dstr_storage.initSelfMatrixValues(client_object.drone_ids,
+                                                                   client_object.id,
+                                                                   client_object.target_list,
+                                                                   100)
+            client_object.target_dstr_storage.setDroneTargetsPathTimes(client_object.trg_path, 10, 45)
+            client_object.target_dstr_storage.selfStringMatrixCalculation(client_object.id)
+            client_object.target_dstr_storage.setBotCurrentCharge(data[0], 100)
+            response_data = "%s/%s" % (str(client_object.id),
+                                       str(client_object.target_dstr_storage.getSelfMatrixString()))
             msg = Message("all", 8, response_data)
             udp_socket.sendto(str(msg), address)
-            print 'position response send'
+            print 'matrix string send'
+            self.matrixCalc(client_object)
             return
 
-        if int(msg[1]) == 8:  # position_response
-
-            bot_id_pos = msg[2].split('.')
-
-            client_object.bot_pos_dict[bot_id_pos[0]] = ast.literal_eval(bot_id_pos[1])
-            print 'get position response'
-            print client_object.bot_pos_dict
+        if int(msg[1]) == 8:  # send_matrix_string
+            data = msg[2].split('/')
+            client_object.target_dstr_storage.appendMatrixString(ast.literal_eval(data[1]), data[0])
+            client_object.target_dstr_storage.setBotCurrentCharge(data[0], 100)
+            self.matrixCalc(client_object)
             return
+
+        if int(msg[1]) == 9:  # ids_update
+            client_object.drone_ids = ast.literal_eval(msg[2])
+            print 'get new id list', client_object.drone_ids
+            return
+
+    def matrixCalc(self, client_object):
+        if client_object.target_dstr_storage.checkCountOfDroneTarget():
+            client_object.target_dstr_storage.matrixCalc()
+            client_object.target_dstr_storage.printTargetForDrone()
 
     def server_main_cycle_thread(self, udp_socket):
         adrress_list = []
+        bot_ids_list = []
         messages_queue = Queue.Queue()
 
         while self.server_connection:
@@ -92,11 +120,21 @@ class Threads():
                 data_list = data.split('/ ')
                 if addr not in adrress_list:
                     adrress_list.append(addr)
+
                 if data_list[2] == "quit":
                     adrress_list.remove(addr)
+                    bot_ids_list.remove(str(addr[1]))
+                    for send_addr in adrress_list:
+                        msg = Message('ids_update', 9, str(bot_ids_list))
+                        udp_socket.sendto(str(msg), send_addr)
+
                 if data_list[2] == "client_hello_msg":
+                    bot_ids_list.append(str(addr[1]))
                     msg = Message('server_response', 6, str(addr[1]))
                     udp_socket.sendto(str(msg), addr)
+                    for send_addr in adrress_list:
+                        msg = Message('ids_update', 9, str(bot_ids_list))
+                        udp_socket.sendto(str(msg), send_addr)
             except:
                 continue
 
@@ -135,12 +173,11 @@ def dict_to_str(dictation):
 
 
 def file_map_update(map_storage, map_file_name, response_map):
-    response_map = '{' + response_map + '}'
-    respose_map_dict = ast.literal_eval(response_map)
+    response_map_dict = ast.literal_eval('{' + response_map + '}')
     map_chunks = map_storage.getChunksDict()
 
-    for key in respose_map_dict.keys():
-        map_chunks[key] = respose_map_dict[key]
+    for key in response_map_dict.keys():
+        map_chunks[key] = response_map_dict[key]
     map_storage.updateChunksFromDict(map_chunks)
 
     map_text = map_storage.printToText()
