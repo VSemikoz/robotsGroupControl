@@ -420,12 +420,25 @@ class Map:
         return return_dict
 
     def updateChunksFromDict(self, chunks_dict):
+        unchangeable_symb = [0b1000, 0b1001]
+
         for key in chunks_dict.keys():
+            chunk_grid_string = []
             chunk = self._chunks.get(key)
             if not chunk:
                 chunk = Chunk(CHUNK_SIZE)
                 self._chunks[key] = chunk
-            self._chunks[key]._grid = chunks_dict[key]
+
+            for symbNumb in range(len(chunks_dict[key])):
+                symb = chunks_dict[key][symbNumb]
+                #print symb
+
+                if symb in unchangeable_symb:
+                    symb = 0b0001
+                if self._chunks[key]._grid[symbNumb] in unchangeable_symb:
+                    symb = self._chunks[key]._grid[symbNumb]
+                chunk_grid_string.append(symb)
+            self._chunks[key]._grid = tuple(chunk_grid_string)
 
 
     # convert map from self._chunk to readable map
