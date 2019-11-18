@@ -60,7 +60,7 @@ class Threads():
             return
 
         if int(msg[1]) == 5:  # map_update_response
-            file_map_update(client_object.map_storage, "map2.mapAI", msg[2])
+            file_map_update(client_object.map_storage, client_object.map_name, msg[2])
             return
 
         if int(msg[1]) == 6:  # server_hello_response
@@ -68,10 +68,7 @@ class Threads():
             return
 
         if int(msg[1]) == 7:  # matrix_string_request
-            client_object.target_dstr_storage = MatrixCalcModule()#TODO: delete
             data = msg[2].split('/')
-            client_object.target_dstr_storage.appendMatrixString(ast.literal_eval(data[1]), data[0])
-
             for trg_pos in client_object.target_list:
                 a_star_wave = client_object.map_storage.AStar(client_object.pos, trg_pos, [])
                 path = client_object.map_storage.getPathFromDistance(a_star_wave, trg_pos, [])
@@ -81,6 +78,7 @@ class Threads():
                                                                    client_object.id,
                                                                    client_object.target_list,
                                                                    100)
+            client_object.target_dstr_storage.appendMatrixString(ast.literal_eval(data[1]), data[0])
             client_object.target_dstr_storage.setDroneTargetsPathTimes(client_object.trg_path, 10, 45)
             client_object.target_dstr_storage.selfStringMatrixCalculation(client_object.id)
             client_object.target_dstr_storage.setBotCurrentCharge(data[0], 100)
@@ -108,6 +106,8 @@ class Threads():
         if client_object.target_dstr_storage.checkCountOfDroneTarget():
             client_object.target_dstr_storage.matrixCalc()
             client_object.target_dstr_storage.printTargetForDrone()
+            my_target = client_object.target_dstr_storage.getSelfTarget(client_object.id)
+            print "My target is: %s" % str(my_target)
 
     def server_main_cycle_thread(self, udp_socket):
         adrress_list = []

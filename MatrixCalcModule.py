@@ -23,6 +23,7 @@ class MatrixCalcModule:
         self.targetForDrone = {}
 
         self.droneTargetPathTimes = {}
+        self.selfTarget = None
 
     def getSelfMatrixString(self):
         return self.selfMatrixString
@@ -69,7 +70,14 @@ class MatrixCalcModule:
                 self.matrixCoefficient[-1].append(koef)
 
     def initSelfMatrixValues(self, droneIDs, selfID, targetPos, droneCharge):
+        self.dronePathTime = {}
+        self.selfMatrixString = []
+        self.botIDMatrixString = {}
+        self.matrixCoefficient = []
+        self.targetForDrone = {}
+
         self.setDroneIds(droneIDs)
+
         """ 
         self.setTargetIDs(targetPos.keys())
         for ID in self.targetIDs:
@@ -166,8 +174,6 @@ class MatrixCalcModule:
     def checkCountOfDroneTarget(self):
         self.setCountOdDrone()
         self.setCountOfTarget()
-        print self.botIDMatrixString, 'stringaaaaaaaaaaaaaaaaaaaa'
-        print len(self.botIDMatrixString.values()[0]) , self.countOfTarget , len(self.botIDMatrixString) , self.countOfDrones
         if len(self.botIDMatrixString.values()[0]) == self.countOfTarget and \
                 len(self.botIDMatrixString) == self.countOfDrones:
             self.appendMatrixStrings()
@@ -176,7 +182,6 @@ class MatrixCalcModule:
         return False
 
     def matrixCalc(self):
-        print self.matrixCoefficient, 'huy sosiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii'
         while self.matrixCoefficient != [[0] * self.countOfTarget] * self.countOfDrones:
             for i in range(self.countOfDrones):
                 if self.matrixCoefficient[i] == [0] * self.countOfTarget:
@@ -215,3 +220,7 @@ class MatrixCalcModule:
     def printMatrixCoeff(self):
         for col in self.matrixCoefficient:
             print (col)
+
+    def getSelfTarget(self, ID):
+        return self.targetForDrone[ID]
+

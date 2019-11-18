@@ -41,7 +41,7 @@ class Server(Socket):
 class Client(Socket):
     def __init__(self):
         Socket.__init__(self)
-        self.map_name = "map1.mapAI"
+        self.map_name = "1"
         self.id = None
         self.pos = None
         self.target_list = []
@@ -97,6 +97,14 @@ class Client(Socket):
             print 'map send'
             return
 
+        if user_input == "show_trg":
+            print 'target list is: %s' % str(self.target_list)
+            return
+
+        if user_input == "show_pos":
+            print 'self pos is: %s' % str(self.pos)
+            return
+
         if user_input == "update_map":
             self.update_map(udp_socket)
             print "map update request sent"
@@ -120,10 +128,9 @@ class Client(Socket):
         request_data = "%s/%s" % (str(self.id), str(self.target_dstr_storage.getSelfMatrixString()))
         msg = Message('all', 7, request_data)
         udp_socket.sendto(str(msg), self.address)
-        self.target_dstr_storage = MatrixCalcModule()  # TODO: delete
 
     def get_map(self):
-        handle = open("map1.mapAI", "r")
+        handle = open(self.map_name, "r")
         data = handle.read()
         handle.close()
         return data
