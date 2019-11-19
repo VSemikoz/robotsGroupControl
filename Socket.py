@@ -9,7 +9,8 @@ from MatrixCalcModule import MatrixCalcModule
 
 class Socket:
     def __init__(self):
-        self.host = '192.168.1.243'
+        #self.host = '192.168.1.243'
+        self.host = '192.168.43.73'
         self.port = 263
         self.address = (self.host, self.port)
 

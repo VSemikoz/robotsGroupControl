@@ -139,7 +139,7 @@ class Threads():
                 continue
 
             """SERVER RECEIVE LOGS"""
-            if data_list[1] == '5':
+            if data_list[1] == '5'  or data_list[1] == '3':
                 print('from %s received %s' % (addr, 'map'))
             else:
                 print('from %s received %s' % (addr, str.encode(data)))
