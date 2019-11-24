@@ -72,8 +72,7 @@ class Chunk:
             try:
                 self._grid[i] = val
             except:
-                print val, self._grid[i]
-
+                pass
 
 class Map:
     def __init__(self):
@@ -98,6 +97,9 @@ class Map:
 
     def getChunkCoords(self, pos):
         return pos[0] / CHUNK_SIZE, pos[1] / CHUNK_SIZE
+
+    def getMapCoords(self, inChunkPos, chunkKey):
+        return chunkKey[1] * CHUNK_SIZE + (inChunkPos % CHUNK_SIZE), chunkKey[0] * CHUNK_SIZE + (inChunkPos / CHUNK_SIZE)
 
     def unsearchChunk(self, pos, cellRadius):
         chunkCoords = self.getChunkCoords(pos)
@@ -419,6 +421,36 @@ class Map:
             return_dict[key] = self._chunks[key]
         return return_dict
 
+    def getDifferBetweenMap(self, firstMap, secondMap):
+        unchangeable_symb = [0b1000, 0b1001]
+        differList = {}
+        for firstMapKey in firstMap.keys():
+            for firstMapSymbNumb in range(len(firstMap[firstMapKey])):
+                firstMapSymb =  firstMap[firstMapKey][firstMapSymbNumb]
+                if firstMapKey in secondMap.keys():
+                    secondMapSymb = secondMap[firstMapKey][firstMapSymbNumb]
+                    if not firstMapSymb in unchangeable_symb and not secondMapSymb in unchangeable_symb:
+                        if firstMapSymb != secondMapSymb:
+                            differList[self.getMapCoords(firstMapSymbNumb, firstMapKey)] = firstMapSymb
+        return differList
+
+    def updateMapWithDifferUpdate(self, differ, otherBotPos):
+        updateIsCorrect, correctCellsList = self.getCorrectCellsFromUpdate(differ, otherBotPos)
+        for cell in correctCellsList.keys():
+            self.setBitCell(cell, correctCellsList[cell])
+        return updateIsCorrect
+
+    def getCorrectCellsFromUpdate(self, differ, otherBotPos):
+        correctCellsList = {}
+        updateIsCorrect = True
+        for cell in differ.keys():
+            neighborsCells = self.cellsAroundCell(cell)
+            if otherBotPos in neighborsCells:
+                correctCellsList[cell] = differ[cell]
+            else:
+                updateIsCorrect = False
+        return updateIsCorrect, correctCellsList
+
     def updateChunksFromDict(self, chunks_dict):
         unchangeable_symb = [0b1000, 0b1001]
 
@@ -431,7 +463,6 @@ class Map:
 
             for symbNumb in range(len(chunks_dict[key])):
                 symb = chunks_dict[key][symbNumb]
-                #print symb
 
                 if symb in unchangeable_symb:
                     symb = 0b0001
@@ -498,7 +529,7 @@ class Map:
                 self.setBitCell((symbolNumb, lineNumb), SYMBOL_TO_BIT_DICT[symbol])
         return self._chunks
 
-    def getBotTargetCoords(self, fileName):
+    def getBotTargetCoords(self):
         target_list = []
         bot_coord = None
         chunkGrid = self.printToText()
@@ -783,6 +814,15 @@ class Map:
                 chunk = Chunk(CHUNK_SIZE)
                 self._chunks[chunkPos] = chunk
 
+    def getChunksGrid(self):
+        chunks_grid_dict = {}
+        for key in self._chunks.keys():
+            chunks_grid_dict[key] = []
+            for symb in self._chunks[key]._grid:
+                chunks_grid_dict[key].append(symb)
+        return chunks_grid_dict
+
+
     # set third bit as 1
     @staticmethod
     def setBitNearestWall(val):
@@ -894,6 +934,3 @@ class Map:
                 minElem = el[0]
         return minElem, minPrior
 
-    @property
-    def chunks(self):
-        return self._chunks

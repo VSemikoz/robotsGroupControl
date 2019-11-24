@@ -9,8 +9,8 @@ from MatrixCalcModule import MatrixCalcModule
 
 class Socket:
     def __init__(self):
-        #self.host = '192.168.1.243'
-        self.host = '192.168.43.73'
+        self.host = '192.168.1.243'
+        #self.host = '192.168.43.73'
         self.port = 263
         self.address = (self.host, self.port)
 
@@ -25,7 +25,8 @@ class Server(Socket):
         udp_socket.setblocking(False)
         udp_socket.settimeout(1)
 
-        server_thread = Thread(target=self.threads.server_main_cycle_thread, args=(udp_socket,))
+        server_thread = Thread(target=self.threads.server_main_cycle_thread, args=(self,
+                                                                                   udp_socket,))
         server_thread.start()
 
         while self.threads.server_connection:
@@ -62,7 +63,7 @@ class Client(Socket):
         self.map_name = user_input
 
         self.map_storage.getChunkGridFormFile(self.map_name)
-        self.target_list, self.pos = self.map_storage.getBotTargetCoords(self.map_name)
+        self.target_list, self.pos = self.map_storage.getBotTargetCoords()
 
 
         msg = Message('server', 4, 'client_hello_msg')
@@ -107,6 +108,7 @@ class Client(Socket):
             return
 
         if user_input == "update_map":
+            self.map_storage.getChunksFromFile(self.map_name)
             self.update_map(udp_socket)
             print "map update request sent"
             return
@@ -142,5 +144,6 @@ class Client(Socket):
         udp_socket.sendto(str(msg), self.address)
 
     def update_map(self, udp_socket):
-        msg = Message('all', 2, "map update request")
+        map_chunks = self.map_storage.getChunksGrid()
+        msg = Message('all', 2, [map_chunks, self.pos, self.id])
         udp_socket.sendto(str(msg), self.address)

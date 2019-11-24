@@ -24,7 +24,7 @@ class Threads():
             """CLIENT LOGS"""
             data_list = data.split('/ ')
 
-            if data_list[1] == '5':
+            if data_list[1] in ['2', '3', '5']:
                 print('from %s received %s' % (addr, "map"))
             else:
                 print('from %s received %s' % (addr, data))
@@ -55,12 +55,34 @@ class Threads():
             return
 
         if int(msg[1]) == 2:  # map_update_request
-            msg = Message("all", 5, dict_to_str(client_object.map_storage._chunks))
-            udp_socket.sendto(str(msg), address)
+            rcv_map, pos, back_ip = ast.literal_eval(msg[2])
+            client_object.map_storage.getChunkGridFormFile(client_object.map_name)
+            self_map = client_object.map_storage.getChunksGrid()
+            map_differ = client_object.map_storage.getDifferBetweenMap(rcv_map, self_map)
+            if map_differ:
+                print 'differ'
+                if client_object.map_storage.updateMapWithDifferUpdate(map_differ, pos):
+                    file_map_update(client_object.map_storage, client_object.map_name)
+                    print 'differ agreement'
+                    return
+                else:
+                    print 'differ disagreement'
+                    file_map_update(client_object.map_storage, client_object.map_name)
+                    self_map = client_object.map_storage.getChunksGrid()
+                    msg = Message((client_object.host, back_ip), 5, self_map)
+                    udp_socket.sendto(str(msg), address)
+                    print('send new map update')
+                    return
+            else:
+                print 'no differ'
+                return
+
+        if int(msg[1]) == 3:  # send_map
+            print "get map: \n%s\n" % msg[2]
             return
 
         if int(msg[1]) == 5:  # map_update_response
-            file_map_update(client_object.map_storage, client_object.map_name, msg[2])
+            file_map_update_from_response(client_object.map_storage, client_object.map_name, msg[2])
             return
 
         if int(msg[1]) == 6:  # server_hello_response
@@ -109,7 +131,7 @@ class Threads():
             my_target = client_object.target_dstr_storage.getSelfTarget(client_object.id)
             print "My target is: %s" % str(my_target)
 
-    def server_main_cycle_thread(self, udp_socket):
+    def server_main_cycle_thread(self, server_object, udp_socket):
         adrress_list = []
         bot_ids_list = []
         messages_queue = Queue.Queue()
@@ -139,7 +161,7 @@ class Threads():
                 continue
 
             """SERVER RECEIVE LOGS"""
-            if data_list[1] == '5'  or data_list[1] == '3':
+            if data_list[1] in ['2', '3', '5']:
                 print('from %s received %s' % (addr, 'map'))
             else:
                 print('from %s received %s' % (addr, str.encode(data)))
@@ -150,14 +172,19 @@ class Threads():
             if new_message and data_list[0] == 'all':
                 for sendAddr in adrress_list:
                     if addr != sendAddr:
-                        if data_list[1] == '5':
-
+                        if data_list[1] in ['2', '3', '5']:
                             """SERVER SENDING LOGS"""
                             print('Send %s to %s' % ("map", sendAddr))
                         else:
                             print('Send %s to %s' % (str.encode(data), sendAddr))
-
                         udp_socket.sendto(str.encode(data), sendAddr)
+            elif new_message and data_list[0] == 'server':
+                pass
+            elif new_message and ast.literal_eval(data_list[0])[0] == server_object.host:
+                print 'Send to %s' % data_list[0]
+                host, port = ast.literal_eval(data_list[0])
+                port = int(port)
+                udp_socket.sendto(str.encode(data), (host, port))
 
         # close server-clinet connections
         for addr in adrress_list:
@@ -172,8 +199,8 @@ def dict_to_str(dictation):
     return result_str
 
 
-def file_map_update(map_storage, map_file_name, response_map):
-    response_map_dict = ast.literal_eval('{' + response_map + '}')
+def file_map_update_from_response(map_storage, map_file_name, response_map):
+    response_map_dict = ast.literal_eval(response_map)
     map_chunks = map_storage.getChunksDict()
 
     for key in response_map_dict.keys():
@@ -184,6 +211,17 @@ def file_map_update(map_storage, map_file_name, response_map):
     for line_number in range(len(map_text)):
         map_text[line_number] = ''.join(map_text[line_number])
 
+    f = open(map_file_name, "w")
+    for line in map_text:
+        f.write(line)
+        f.write('\n')
+    f.close()
+
+
+def file_map_update(map_storage, map_file_name):
+    map_text = map_storage.printToText()
+    for line_number in range(len(map_text)):
+        map_text[line_number] = ''.join(map_text[line_number])
     f = open(map_file_name, "w")
     for line in map_text:
         f.write(line)
