@@ -50,8 +50,6 @@ class Client(Socket):
         self.map_storage = Map()
         self.target_dstr_storage = MatrixCalcModule()
         self.drone_ids = []
-
-        # {trg_pos : (path)}
         self.trg_path = {}
 
     def run_client(self):
@@ -64,9 +62,7 @@ class Client(Socket):
 
         self.map_storage.getChunkGridFormFile(self.map_name)
         self.target_list, self.pos = self.map_storage.getBotTargetCoords()
-
-
-        msg = Message('server', 4, 'client_hello_msg')
+        msg = Message([self.id, 'server', 4, 'client_hello_msg'])
         udp_socket.sendto(str(msg), self.address)
         print "Hello msg to server sent"
 
@@ -83,7 +79,7 @@ class Client(Socket):
 
     def process_user_input(self, user_input, udp_socket):
         if user_input == "quit":
-            msg = Message('server', 1, "quit")
+            msg = Message([self.id, 'server', 1, "quit"])
             udp_socket.sendto(str(msg), self.address)
             self.threads.client_connection = False
             print "close connection client"
@@ -128,8 +124,8 @@ class Client(Socket):
             return
 
     def bots_matrix_tring_request(self, udp_socket):
-        request_data = "%s/%s" % (str(self.id), str(self.target_dstr_storage.getSelfMatrixString()))
-        msg = Message('all', 7, request_data)
+        request_data = str(self.target_dstr_storage.getSelfMatrixString())
+        msg = Message([self.id, 'all', 7, request_data])
         udp_socket.sendto(str(msg), self.address)
 
     def get_map(self):
@@ -140,10 +136,10 @@ class Client(Socket):
 
     def send_map(self, udp_socket):
         map_data = self.get_map()
-        msg = Message('all', 3, map_data)
+        msg = Message([self.id, 'all', 3, map_data])
         udp_socket.sendto(str(msg), self.address)
 
     def update_map(self, udp_socket):
         map_chunks = self.map_storage.getChunksGrid()
-        msg = Message('all', 2, [map_chunks, self.pos, self.id])
+        msg = Message([self.id, 'all', 2, [map_chunks, self.pos, self.id]])
         udp_socket.sendto(str(msg), self.address)

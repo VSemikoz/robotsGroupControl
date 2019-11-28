@@ -198,6 +198,7 @@ class MatrixCalcModule:
             if j == self.countOfDrones - 1:
                 droneID = self.IDs[drone]
                 if droneTargetCoeff != 0 or droneTargetCoeff is not None:
+                    print self.droneIDCharge, self.matrixCoefficient
                     self.droneTargetPathTimes[(droneID, self.targetIDs[target])] = \
                         float("{0:.3f}".format(self.droneIDCharge[droneID] / self.matrixCoefficient[drone][target]))
                     self.appendTargetForDrone(drone, target)
