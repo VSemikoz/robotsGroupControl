@@ -41,7 +41,6 @@ class MatrixCalcModule:
         self.targetIDs.sort()
 
     def setTargetPos(self, ID, pos):
-        #self.targetsPosition[ID] = (pos[0] / CELL_PX_SIZE, pos[1] / CELL_PX_SIZE)
         self.targetsPosition[ID] = (pos[0], pos[1])
 
     def setCountOdDrone(self):
@@ -77,12 +76,6 @@ class MatrixCalcModule:
         self.targetForDrone = {}
 
         self.setDroneIds(droneIDs)
-
-        """ 
-        self.setTargetIDs(targetPos.keys())
-        for ID in self.targetIDs:
-            self.setTargetPos(ID, targetPos[ID])
-        """
         self.setTargetIDs(targetPos)
         for ID in self.targetIDs:
             self.setTargetPos(ID, ID)
@@ -174,6 +167,7 @@ class MatrixCalcModule:
     def checkCountOfDroneTarget(self):
         self.setCountOdDrone()
         self.setCountOfTarget()
+
         if len(self.botIDMatrixString.values()[0]) == self.countOfTarget and \
                 len(self.botIDMatrixString) == self.countOfDrones:
             self.appendMatrixStrings()
@@ -198,7 +192,6 @@ class MatrixCalcModule:
             if j == self.countOfDrones - 1:
                 droneID = self.IDs[drone]
                 if droneTargetCoeff != 0 or droneTargetCoeff is not None:
-                    print self.droneIDCharge, self.matrixCoefficient
                     self.droneTargetPathTimes[(droneID, self.targetIDs[target])] = \
                         float("{0:.3f}".format(self.droneIDCharge[droneID] / self.matrixCoefficient[drone][target]))
                     self.appendTargetForDrone(drone, target)

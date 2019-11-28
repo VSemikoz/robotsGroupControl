@@ -1,7 +1,7 @@
 import socket
 import Queue
 from threading import Thread
-from Threads import Threads
+from Threads import Threads, send_message
 from Message import Message
 from map_storage import Map
 from MatrixCalcModule import MatrixCalcModule
@@ -31,12 +31,13 @@ class Server(Socket):
 
         while self.threads.server_connection:
             user_input = raw_input("Input command: ")
-            self.process_server_input(user_input)
+            self.process_server_input(user_input, udp_socket)
         server_thread.join()
         udp_socket.close()
 
-    def process_server_input(self, user_input):
+    def process_server_input(self, user_input, udp_socket):
         if user_input == "quit":
+            self.threads.close_server_connection(udp_socket)
             self.threads.server_connection = False
 
 
@@ -62,8 +63,7 @@ class Client(Socket):
 
         self.map_storage.getChunkGridFormFile(self.map_name)
         self.target_list, self.pos = self.map_storage.getBotTargetCoords()
-        msg = Message([self.id, 'server', 4, 'client_hello_msg'])
-        udp_socket.sendto(str(msg), self.address)
+        send_message(udp_socket, self.address, self.id, 'server', 4, 'client_hello_msg')
         print "Hello msg to server sent"
 
         print "start request_thread"
@@ -79,8 +79,7 @@ class Client(Socket):
 
     def process_user_input(self, user_input, udp_socket):
         if user_input == "quit":
-            msg = Message([self.id, 'server', 1, "quit"])
-            udp_socket.sendto(str(msg), self.address)
+            send_message(udp_socket, self.address, self.id, 'server', 1, "quit")
             self.threads.client_connection = False
             print "close connection client"
             return
@@ -125,8 +124,7 @@ class Client(Socket):
 
     def bots_matrix_tring_request(self, udp_socket):
         request_data = str(self.target_dstr_storage.getSelfMatrixString())
-        msg = Message([self.id, 'all', 7, request_data])
-        udp_socket.sendto(str(msg), self.address)
+        send_message(udp_socket, self.address, self.id, 'all', 7, request_data)
 
     def get_map(self):
         handle = open(self.map_name, "r")
@@ -136,10 +134,8 @@ class Client(Socket):
 
     def send_map(self, udp_socket):
         map_data = self.get_map()
-        msg = Message([self.id, 'all', 3, map_data])
-        udp_socket.sendto(str(msg), self.address)
+        send_message(udp_socket, self.address, self.id, 'all', 3, map_data)
 
     def update_map(self, udp_socket):
         map_chunks = self.map_storage.getChunksGrid()
-        msg = Message([self.id, 'all', 2, [map_chunks, self.pos, self.id]])
-        udp_socket.sendto(str(msg), self.address)
+        send_message(udp_socket, self.address, self.id, 'all', 2, [map_chunks, self.pos])

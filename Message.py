@@ -10,3 +10,6 @@ class Message:
 
     def __str__(self):
         return self.header + '/ ' + self.body
+
+    def get_mes(self):
+        return self.header + '/ ' + self.body

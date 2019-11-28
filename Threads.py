@@ -3,11 +3,15 @@ from threading import Thread
 from Message import Message
 import ast
 
+MAP_TYPE_MESSAGES = [2, 3, 5]
 
 class Threads():
     def __init__(self):
         self.server_connection = True
         self.client_connection = True
+
+        self.address_list = []
+        self.bot_ids_list = []
 
     def request_waiting_thread(self, client_object, client_socket, return_queue):
         messages_queue = Queue.Queue()
@@ -18,16 +22,9 @@ class Threads():
             except:
                 continue
 
-            """CLIENT LOGS"""
-            data_list = data.split('/ ')
-            if data_list[2] in ['2', '3', '5']:
-                print('from %s received %s' % (addr, "map"))
-            else:
-                print('from %s received %s' % (addr, data))
-
             messages_queue.put({addr: data})
             if not messages_queue.empty():
-                message_queue_process_thread = Thread(target=self.message_queue_process,
+                message_queue_process_thread = Thread(target=self.message_queue_process_client,
                                                       args=(messages_queue,
                                                             return_queue,
                                                             client_object,
@@ -41,18 +38,19 @@ class Threads():
                     client_object.drone_ids = [client_object.id]
                     print 'Get unique id from serve: %s' % client_object.id
 
-    def message_queue_process(self, messages_queue, return_queue, client_object, udp_socket, address):
+    def message_queue_process_client(self, messages_queue, return_queue, client_object, udp_socket, address):
         new_message = messages_queue.get()
         addr = new_message.keys()[0]
         msg = new_message[addr].split('/ ')
         recive_msg = Message(msg)
+        receive_log(recive_msg, addr)
 
         if recive_msg.msg_type == 0:  # server_quit
             self.client_connection = False
             return
 
         if recive_msg.msg_type == 2:  # map_update_request
-            rcv_map, pos, back_ip = ast.literal_eval(recive_msg.msg_data)
+            rcv_map, pos = ast.literal_eval(recive_msg.msg_data)
             client_object.map_storage.getChunkGridFormFile(client_object.map_name)
             self_map = client_object.map_storage.getChunksGrid()
             map_differ = client_object.map_storage.getDifferBetweenMap(rcv_map, self_map)
@@ -66,8 +64,9 @@ class Threads():
                     print 'differ disagreement'
                     file_map_update(client_object.map_storage, client_object.map_name)
                     self_map = client_object.map_storage.getChunksGrid()
-                    msg = Message([client_object.id, (client_object.host, back_ip), 5, self_map])
-                    udp_socket.sendto(str(msg), address)
+                    send_addr = (client_object.host, int(recive_msg.id))
+                    #todo
+                    send_message(udp_socket, send_addr, client_object.id, send_addr, 5, self_map)
                     print('send new map update')
                     return
             else:
@@ -101,8 +100,7 @@ class Threads():
             client_object.target_dstr_storage.selfStringMatrixCalculation(client_object.id)
             client_object.target_dstr_storage.setBotCurrentCharge(recive_msg.id, 100)
             response_data = str(client_object.target_dstr_storage.getSelfMatrixString())
-            msg = Message([client_object.id, "all", 8, response_data])
-            udp_socket.sendto(str(msg), address)
+            send_message(udp_socket, address, client_object.id, "all", 8, response_data)
             print 'matrix string send'
             self.matrixCalc(client_object)
             return
@@ -126,73 +124,77 @@ class Threads():
             print "My target is: %s" % str(my_target)
 
     def server_main_cycle_thread(self, server_object, udp_socket):
-        adrress_list = []
-        bot_ids_list = []
         messages_queue = Queue.Queue()
-
         while self.server_connection:
             try:
-                #TODO delete data_list
                 data, addr = udp_socket.recvfrom(102400)
-                data_list = data.split('/ ')
-
-                if addr not in adrress_list:
-                    adrress_list.append(addr)
-
-                if data_list[3] == "quit":
-                    adrress_list.remove(addr)
-                    bot_ids_list.remove(str(addr[1]))
-                    for send_addr in adrress_list:
-                        msg = Message(['server', 'ids_update', 9, str(bot_ids_list)])
-                        udp_socket.sendto(str(msg), send_addr)
-
-                if data_list[3] == "client_hello_msg":
-                    bot_ids_list.append(str(addr[1]))
-                    msg = Message(['server', 'server_response', 6, str(addr[1])])
-                    udp_socket.sendto(str(msg), addr)
-                    for send_addr in adrress_list:
-                        msg = Message(['server', 'ids_update', 9, str(bot_ids_list)])
-                        udp_socket.sendto(str(msg), send_addr)
             except:
                 continue
-
-            """SERVER RECEIVE LOGS"""
-            if data_list[2] in ['2', '3', '5']:
-                print('from %s received %s' % (addr, 'map'))
-            else:
-                print('from %s received %s' % (addr, str.encode(data)))
-
             messages_queue.put({addr: data.decode("utf-8")})
 
-            new_message = messages_queue.get()
-            if new_message and data_list[1] == 'all':
-                for sendAddr in adrress_list:
-                    if addr != sendAddr:
-                        if data_list[2] in ['2', '3', '5']:
-                            """SERVER SENDING LOGS"""
-                            print('Send %s to %s' % ("map", sendAddr))
-                        else:
-                            print('Send %s to %s' % (str.encode(data), sendAddr))
-                        udp_socket.sendto(str.encode(data), sendAddr)
-            elif new_message and data_list[1] == 'server':
-                pass
-            elif new_message and ast.literal_eval(data_list[1])[0] == server_object.host:
-                print 'Send to %s' % data_list[1]
-                host, port = ast.literal_eval(data_list[1])
-                port = int(port)
-                udp_socket.sendto(str.encode(data), (host, port))
+            if not messages_queue.empty():
+                message_queue_process_thread = Thread(target=self.message_queue_process_server,
+                                                      args=(messages_queue,
+                                                            server_object,
+                                                            udp_socket,))
+                message_queue_process_thread.start()
+                message_queue_process_thread.join()
 
+    def message_queue_process_server(self, messages_queue, server_object, udp_socket):
+        new_message = messages_queue.get()
+        addr = new_message.keys()[0]
+        msg = new_message[addr].split('/ ')
+        receive_msg = Message(msg)
+        receive_log(receive_msg, addr)
+
+        if receive_msg.response_type == 'server':
+            if receive_msg.msg_type == 1:
+                self.address_list.remove(addr)
+                self.bot_ids_list.remove(str(addr[1]))
+                for send_addr in self.address_list:
+                    send_message(udp_socket, send_addr, 'server', 'ids_update', 9, str(self.bot_ids_list))
+                return
+
+            if receive_msg.msg_type == 4:
+                if addr not in self.address_list:
+                    self.address_list.append(addr)
+                self.bot_ids_list.append(str(addr[1]))
+                send_message(udp_socket, addr, 'server', 'server_response', 6, str(addr[1]))
+                for send_addr in self.address_list:
+                    send_message(udp_socket, send_addr, 'server', 'ids_update', 9, str(self.bot_ids_list))
+                return
+
+        if receive_msg.response_type == 'all':
+            for sendAddr in self.address_list:
+                if addr != sendAddr:
+                    message = receive_msg.get_mes()
+                    send_log(receive_msg, sendAddr)
+                    udp_socket.sendto(str.encode(message), sendAddr)
+
+    def close_server_connection(self, udp_socket):
         # close server-clinet connections
-        for addr in adrress_list:
-            msg = Message(['server', "all", 0, "server_quit"])
-            udp_socket.sendto(str(msg), addr)
+        for addr in self.address_list:
+            send_message(udp_socket, addr,'server', "all", 0, "server_quit")
 
 
-def dict_to_str(dictation):
-    result_str = ""
-    for key in dictation.keys():
-        result_str += str(key) + ' : ' + str(dictation[key]._grid) + ', '
-    return result_str
+def send_message(udp_socket, addr, bot_id, response_type, msg_type, msg_data):
+    msg = Message([bot_id, response_type, msg_type, msg_data])
+    send_log(msg, addr)
+    udp_socket.sendto(str(msg), addr)
+
+
+def receive_log(recive_msg, addr):
+    if recive_msg.msg_type in MAP_TYPE_MESSAGES:
+        print('from %s received %s' % (addr, 'map'))
+    else:
+        print('from %s received %s' % (addr, recive_msg.msg_data))
+
+
+def send_log(recive_msg, sendAddr):
+    if recive_msg.msg_type in MAP_TYPE_MESSAGES:
+        print('Send %s to %s' % ("map", sendAddr))
+    else:
+        print('Send %s to %s' % (str.encode(recive_msg.get_mes()), sendAddr))
 
 
 def file_map_update_from_response(map_storage, map_file_name, response_map):

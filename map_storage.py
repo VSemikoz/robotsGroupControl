@@ -99,7 +99,9 @@ class Map:
         return pos[0] / CHUNK_SIZE, pos[1] / CHUNK_SIZE
 
     def getMapCoords(self, inChunkPos, chunkKey):
-        return chunkKey[1] * CHUNK_SIZE + (inChunkPos % CHUNK_SIZE), chunkKey[0] * CHUNK_SIZE + (inChunkPos / CHUNK_SIZE)
+        x_pos = chunkKey[0] * CHUNK_SIZE + (inChunkPos % CHUNK_SIZE)
+        y_pos = chunkKey[1] * CHUNK_SIZE + (inChunkPos // CHUNK_SIZE)
+        return x_pos, y_pos
 
     def unsearchChunk(self, pos, cellRadius):
         chunkCoords = self.getChunkCoords(pos)
