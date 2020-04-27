@@ -69,9 +69,14 @@ class Client(Socket):
                                                                                   return_queue,))
         request_thread.start()
 
+        request_thread = Thread(target=self.threads.traffic_flow_thread, args=(self,
+                                                                                  udp_socket,))
+        request_thread.start()
+
         while self.threads.client_connection:
             user_input = raw_input("Input command: ")
             self.process_user_input(user_input, udp_socket)
+        request_thread.join()
         request_thread.join()
 
     def process_user_input(self, user_input, udp_socket):
@@ -132,6 +137,11 @@ class Client(Socket):
     def send_map(self, udp_socket):
         map_data = self.get_map()
         send_message(udp_socket, self.address, self.id, 'all', 3, map_data)
+
+    # sepparate method to send map in delay without logs
+    def send_map_flow(self, udp_socket):
+        map_data = self.get_map()
+        send_message(udp_socket, self.address, self.id, 'all', 11, map_data)
 
     def update_map(self, udp_socket):
         map_chunks = self.map_storage.getChunksGrid()

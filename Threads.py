@@ -1,10 +1,13 @@
 import Queue
+import random
 import socket
+import time
 from threading import Thread
 from Message import Message
 import ast
 
-MAP_TYPE_MESSAGES = [2, 3, 5]
+MAP_TYPE_MESSAGES = [2, 3, 5, 11]
+FLOW_TIMEOUT = 5.0
 
 class Threads:
     def __init__(self):
@@ -38,6 +41,13 @@ class Threads:
                     client_object.id = return_queue.get()
                     client_object.drone_ids = [client_object.id]
                     print 'Get unique id from serve: %s' % client_object.id
+
+    def traffic_flow_thread(self, client_object, udp_socket):
+        while True:
+            if not self.client_connection:
+                break
+            time.sleep(FLOW_TIMEOUT + random.randint(0, 2))
+            client_object.send_map_flow(udp_socket)
 
     def message_queue_process_client(self, messages_queue, return_queue, client_object, udp_socket, address):
         new_message = messages_queue.get()
