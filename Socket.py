@@ -1,8 +1,8 @@
 import socket
 import Queue
+import os
 from threading import Thread
 from Threads import Threads, send_message
-from Message import Message
 from map_storage import Map
 from MatrixCalcModule import MatrixCalcModule
 
@@ -10,7 +10,6 @@ from MatrixCalcModule import MatrixCalcModule
 class Socket:
     def __init__(self):
         self.host = '192.168.1.243'
-        #self.host = '192.168.43.73'
         self.port = 263
         self.address = (self.host, self.port)
 
@@ -44,7 +43,7 @@ class Server(Socket):
 class Client(Socket):
     def __init__(self):
         Socket.__init__(self)
-        self.map_name = "1"
+        self.map_name = None
         self.id = None
         self.pos = None
         self.target_list = []
@@ -57,9 +56,7 @@ class Client(Socket):
         return_queue = Queue.Queue()
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_socket.settimeout(1)
-
-        user_input = str(input("input map name: "))
-        self.map_name = user_input
+        self.map_name = select_map_file()
 
         self.map_storage.getChunkGridFormFile(self.map_name)
         self.target_list, self.pos = self.map_storage.getBotTargetCoords()
@@ -139,3 +136,13 @@ class Client(Socket):
     def update_map(self, udp_socket):
         map_chunks = self.map_storage.getChunksGrid()
         send_message(udp_socket, self.address, self.id, 'all', 2, [map_chunks, self.pos])
+
+
+def select_map_file():
+    while True:
+        user_input = str(raw_input("input map name: "))
+        if os.path.isfile(user_input):
+            return user_input
+        else:
+            print 'no such map name'
+            continue

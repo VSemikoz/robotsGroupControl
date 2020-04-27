@@ -1,11 +1,12 @@
 import Queue
+import socket
 from threading import Thread
 from Message import Message
 import ast
 
 MAP_TYPE_MESSAGES = [2, 3, 5]
 
-class Threads():
+class Threads:
     def __init__(self):
         self.server_connection = True
         self.client_connection = True
@@ -19,7 +20,7 @@ class Threads():
         while self.client_connection:
             try:
                 data, addr = client_socket.recvfrom(102400)
-            except:
+            except socket.timeout:
                 continue
 
             messages_queue.put({addr: data})
@@ -54,6 +55,7 @@ class Threads():
             client_object.map_storage.getChunkGridFormFile(client_object.map_name)
             self_map = client_object.map_storage.getChunksGrid()
             map_differ = client_object.map_storage.getDifferBetweenMap(rcv_map, self_map)
+
             if map_differ:
                 print 'differ'
                 if client_object.map_storage.updateMapWithDifferUpdate(map_differ, pos):
@@ -65,7 +67,6 @@ class Threads():
                     file_map_update(client_object.map_storage, client_object.map_name)
                     self_map = client_object.map_storage.getChunksGrid()
                     send_addr = (client_object.host, int(recive_msg.id))
-                    #todo
                     send_message(udp_socket, send_addr, client_object.id, send_addr, 5, self_map)
                     print('send new map update')
                     return
@@ -128,7 +129,7 @@ class Threads():
         while self.server_connection:
             try:
                 data, addr = udp_socket.recvfrom(102400)
-            except:
+            except socket.timeout:
                 continue
             messages_queue.put({addr: data.decode("utf-8")})
 
@@ -174,14 +175,13 @@ class Threads():
     def close_server_connection(self, udp_socket):
         # close server-clinet connections
         for addr in self.address_list:
-            send_message(udp_socket, addr,'server', "all", 0, "server_quit")
+            send_message(udp_socket, addr, 'server', "all", 0, "server_quit")
 
 
 def send_message(udp_socket, addr, bot_id, response_type, msg_type, msg_data):
     msg = Message([bot_id, response_type, msg_type, msg_data])
     send_log(msg, addr)
     udp_socket.sendto(str(msg), addr)
-
 
 def receive_log(recive_msg, addr):
     if recive_msg.msg_type in MAP_TYPE_MESSAGES:
@@ -199,10 +199,11 @@ def send_log(recive_msg, sendAddr):
 
 def file_map_update_from_response(map_storage, map_file_name, response_map):
     response_map_dict = ast.literal_eval(response_map)
-    map_chunks = map_storage.getChunksDict()
+    map_chunks = {}
 
     for key in response_map_dict.keys():
         map_chunks[key] = response_map_dict[key]
+    print "response_map_dict2",map_chunks
     map_storage.updateChunksFromDict(map_chunks)
 
     map_text = map_storage.printToText()
