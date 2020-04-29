@@ -436,21 +436,26 @@ class Map:
                             differList[self.getMapCoords(firstMapSymbNumb, firstMapKey)] = firstMapSymb
         return differList
 
-    def updateMapWithDifferUpdate(self, differ, otherBotPos):
-        updateIsCorrect, correctCellsList = self.getCorrectCellsFromUpdate(differ, otherBotPos)
+    def updateMapWithDifferUpdate(self, differ, otherBotPos, self_pos):
+        updateIsCorrect, correctCellsList = self.getCorrectCellsFromUpdate(differ, otherBotPos, self_pos)
         for cell in correctCellsList.keys():
             self.setBitCell(cell, correctCellsList[cell])
         return updateIsCorrect
 
-    def getCorrectCellsFromUpdate(self, differ, otherBotPos):
+    def getCorrectCellsFromUpdate(self, differ, otherBotPos, self_pos):
         correctCellsList = {}
         updateIsCorrect = True
         for cell in differ.keys():
             neighborsCells = self.cellsAroundCell(cell)
-            if otherBotPos in neighborsCells:
+            if otherBotPos in neighborsCells or (differ[cell] == 0b0000 and self_pos not in neighborsCells):
                 correctCellsList[cell] = differ[cell]
             else:
                 updateIsCorrect = False
+                if self_pos not in neighborsCells:
+                    # mark unreached point for all bots as unknown
+                    correctCellsList[cell] = 0b0000
+                else:
+                    correctCellsList[cell] = self.getCell(cell)
         return updateIsCorrect, correctCellsList
 
     def updateChunksFromDict(self, chunks_dict):
@@ -529,6 +534,7 @@ class Map:
             for symbolNumb in range(countOfSymbolInLine):
                 symbol = fileContent[lineNumb][symbolNumb]
                 self.setBitCell((symbolNumb, lineNumb), SYMBOL_TO_BIT_DICT[symbol])
+        f.close()
         return self._chunks
 
     def getBotTargetCoords(self):

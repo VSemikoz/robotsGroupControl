@@ -47,7 +47,8 @@ class Threads:
             if not self.client_connection:
                 break
             time.sleep(FLOW_TIMEOUT + random.randint(0, 2))
-            client_object.send_map_flow(udp_socket)
+            client_object.map_storage.getChunksFromFile(client_object.map_name)
+            client_object.update_map(udp_socket)
 
     def message_queue_process_client(self, messages_queue, return_queue, client_object, udp_socket, address):
         new_message = messages_queue.get()
@@ -61,14 +62,14 @@ class Threads:
             return
 
         if recive_msg.msg_type == 2:  # map_update_request
-            rcv_map, pos = ast.literal_eval(recive_msg.msg_data)
+            rcv_map, rcv_pos = ast.literal_eval(recive_msg.msg_data)
             client_object.map_storage.getChunkGridFormFile(client_object.map_name)
             self_map = client_object.map_storage.getChunksGrid()
             map_differ = client_object.map_storage.getDifferBetweenMap(rcv_map, self_map)
 
             if map_differ:
                 print 'differ'
-                if client_object.map_storage.updateMapWithDifferUpdate(map_differ, pos):
+                if client_object.map_storage.updateMapWithDifferUpdate(map_differ, rcv_pos, client_object.pos):
                     file_map_update(client_object.map_storage, client_object.map_name)
                     print 'differ agreement'
                     return
@@ -76,8 +77,7 @@ class Threads:
                     print 'differ disagreement'
                     file_map_update(client_object.map_storage, client_object.map_name)
                     self_map = client_object.map_storage.getChunksGrid()
-                    send_addr = (client_object.host, int(recive_msg.id))
-                    send_message(udp_socket, send_addr, client_object.id, send_addr, 5, self_map)
+                    send_message(udp_socket, address, client_object.id, "all", 2, [self_map, client_object.pos])
                     print('send new map update')
                     return
             else:
@@ -193,6 +193,7 @@ def send_message(udp_socket, addr, bot_id, response_type, msg_type, msg_data):
     send_log(msg, addr)
     udp_socket.sendto(str(msg), addr)
 
+
 def receive_log(recive_msg, addr):
     if recive_msg.msg_type in MAP_TYPE_MESSAGES:
         print('from %s received %s' % (addr, 'map'))
@@ -213,7 +214,6 @@ def file_map_update_from_response(map_storage, map_file_name, response_map):
 
     for key in response_map_dict.keys():
         map_chunks[key] = response_map_dict[key]
-    print "response_map_dict2",map_chunks
     map_storage.updateChunksFromDict(map_chunks)
 
     map_text = map_storage.printToText()

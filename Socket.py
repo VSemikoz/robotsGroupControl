@@ -69,15 +69,15 @@ class Client(Socket):
                                                                                   return_queue,))
         request_thread.start()
 
-        request_thread = Thread(target=self.threads.traffic_flow_thread, args=(self,
+        traffic_flow_thread = Thread(target=self.threads.traffic_flow_thread, args=(self,
                                                                                   udp_socket,))
-        request_thread.start()
+        traffic_flow_thread.start()
 
         while self.threads.client_connection:
             user_input = raw_input("Input command: ")
             self.process_user_input(user_input, udp_socket)
         request_thread.join()
-        request_thread.join()
+        traffic_flow_thread.join()
 
     def process_user_input(self, user_input, udp_socket):
         if user_input == "quit":
