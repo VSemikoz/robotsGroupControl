@@ -13,6 +13,8 @@ class Threads:
     def __init__(self):
         self.server_connection = True
         self.client_connection = True
+        self.map_traffic_flow_thread_is_run = False
+        self.update_traffic_flow_thread_is_run = False
 
         self.address_list = []
         self.bot_ids_list = []
@@ -42,8 +44,15 @@ class Threads:
                     client_object.drone_ids = [client_object.id]
                     print 'Get unique id from serve: %s' % client_object.id
 
-    def traffic_flow_thread(self, client_object, udp_socket):
-        while True:
+    def map_traffic_flow_thread(self, client_object, udp_socket):
+        while self.map_traffic_flow_thread_is_run:
+            if not self.client_connection:
+                break
+            time.sleep(FLOW_TIMEOUT + random.randint(0, 2))
+            client_object.send_map_flow(udp_socket)
+
+    def update_traffic_flow_thread(self, client_object, udp_socket):
+        while self.update_traffic_flow_thread_is_run:
             if not self.client_connection:
                 break
             time.sleep(FLOW_TIMEOUT + random.randint(0, 2))
