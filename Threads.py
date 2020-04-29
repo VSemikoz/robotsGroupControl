@@ -13,8 +13,8 @@ class Threads:
     def __init__(self):
         self.server_connection = True
         self.client_connection = True
-        self.map_traffic_flow_thread_is_run = True
-        self.update_traffic_flow_thread_is_run = True
+        self.map_traffic_flow_thread_is_run = False
+        self.update_traffic_flow_thread_is_run = False
 
         self.address_list = []
         self.bot_ids_list = []

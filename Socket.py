@@ -123,6 +123,9 @@ class Client(Socket):
             return
 
         if user_input == "start_map_flow":
+            if self.threads.map_traffic_flow_thread_is_run:
+                print "map flow is already started"
+                return
             self.threads.map_traffic_flow_thread_is_run = True
             self.map_traffic_flow_thread = Thread(target=self.threads.map_traffic_flow_thread, args=(self, udp_socket,))
             self.map_traffic_flow_thread.start()
@@ -130,12 +133,18 @@ class Client(Socket):
             return
 
         if user_input == "stop_map_flow":
+            if not self.threads.map_traffic_flow_thread_is_run:
+                print "map flow is not start"
+                return
             self.threads.map_traffic_flow_thread_is_run = False
             self.map_traffic_flow_thread.join()
             print "map flow is stop"
             return
 
         if user_input == "start_update_flow":
+            if self.threads.update_traffic_flow_thread_is_run:
+                print "map update flow is already started"
+                return
             self.threads.update_traffic_flow_thread_is_run = True
             self.update_traffic_flow_thread = Thread(target=self.threads.update_traffic_flow_thread, args=(self, udp_socket,))
             self.update_traffic_flow_thread.start()
@@ -143,6 +152,9 @@ class Client(Socket):
             return
 
         if user_input == "stop_update_flow":
+            if not self.threads.update_traffic_flow_thread_is_run:
+                print "map update flow is not start"
+                return
             self.threads.update_traffic_flow_thread_is_run = False
             self.update_traffic_flow_thread.join()
             print "map update flow is stop"
