@@ -52,6 +52,9 @@ class Client(Socket):
         self.drone_ids = []
         self.trg_path = {}
 
+        self.map_traffic_flow_thread = None
+        self.update_traffic_flow_thread = None
+
     def run_client(self):
         return_queue = Queue.Queue()
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -69,15 +72,10 @@ class Client(Socket):
                                                                                   return_queue,))
         request_thread.start()
 
-        traffic_flow_thread = Thread(target=self.threads.traffic_flow_thread, args=(self,
-                                                                                  udp_socket,))
-        traffic_flow_thread.start()
-
         while self.threads.client_connection:
             user_input = raw_input("Input command: ")
             self.process_user_input(user_input, udp_socket)
         request_thread.join()
-        traffic_flow_thread.join()
 
     def process_user_input(self, user_input, udp_socket):
         if user_input == "quit":
@@ -122,6 +120,32 @@ class Client(Socket):
             self.target_dstr_storage.selfStringMatrixCalculation(self.id)
             self.bots_matrix_tring_request(udp_socket)
             print "bots matrix string request sent"
+            return
+
+        if user_input == "start_map_flow":
+            self.threads.map_traffic_flow_thread_is_run = True
+            self.map_traffic_flow_thread = Thread(target=self.threads.map_traffic_flow_thread, args=(self, udp_socket,))
+            self.map_traffic_flow_thread.start()
+            print "map flow is start"
+            return
+
+        if user_input == "stop_map_flow":
+            self.threads.map_traffic_flow_thread_is_run = False
+            self.map_traffic_flow_thread.join()
+            print "map flow is stop"
+            return
+
+        if user_input == "start_update_flow":
+            self.threads.update_traffic_flow_thread_is_run = True
+            self.update_traffic_flow_thread = Thread(target=self.threads.update_traffic_flow_thread, args=(self, udp_socket,))
+            self.update_traffic_flow_thread.start()
+            print "map update flow is start"
+            return
+
+        if user_input == "stop_update_flow":
+            self.threads.update_traffic_flow_thread_is_run = False
+            self.update_traffic_flow_thread.join()
+            print "map update flow is stop"
             return
 
     def bots_matrix_tring_request(self, udp_socket):
