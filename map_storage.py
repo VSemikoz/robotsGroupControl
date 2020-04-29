@@ -447,13 +447,15 @@ class Map:
         updateIsCorrect = True
         for cell in differ.keys():
             neighborsCells = self.cellsAroundCell(cell)
-            if otherBotPos in neighborsCells or differ[cell] == 0b0000:
+            if otherBotPos in neighborsCells or (differ[cell] == 0b0000 and self_pos not in neighborsCells):
                 correctCellsList[cell] = differ[cell]
             else:
                 updateIsCorrect = False
                 if self_pos not in neighborsCells:
                     # mark unreached point for all bots as unknown
                     correctCellsList[cell] = 0b0000
+                else:
+                    correctCellsList[cell] = self.getCell(cell)
         return updateIsCorrect, correctCellsList
 
     def updateChunksFromDict(self, chunks_dict):
