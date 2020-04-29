@@ -47,7 +47,8 @@ class Threads:
             if not self.client_connection:
                 break
             time.sleep(FLOW_TIMEOUT + random.randint(0, 2))
-            client_object.send_map_flow(udp_socket)
+            client_object.map_storage.getChunksFromFile(client_object.map_name)
+            client_object.update_map(udp_socket)
 
     def message_queue_process_client(self, messages_queue, return_queue, client_object, udp_socket, address):
         new_message = messages_queue.get()
