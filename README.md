@@ -24,7 +24,8 @@ Group control by robots (for example raspberry pi), through sockets in one netwo
     start_update_flow - Начать выполнение поток в котором с делеем в 5-7 секунд выполнятеся команда update_map
     stop_map_flow - Завершает поток запущенный командой start_map_flow
     start_update_flow - Завершает поток запущенный командой start_update_flow
-	
+
+Потоки обмена картами и обновлением карты запускаются автоматически со стартом клиета. Чтобы запускать потоки по команде нужно поменять значение self.start_flows_immediately класса Socket на False.
 Имеются случаи когда Server.py или Client.py не запускаются из за того что были некоректно закрыты.
 В этом случае либо закрыть открытые процессы в фоне (рекомендуется) либо поменять порт в файле  robotsGroupeControle/Socket в строке 13
 	        self.port = 263
