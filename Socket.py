@@ -5,6 +5,7 @@ from threading import Thread
 from Threads import Threads, send_message
 from map_storage import Map
 from MatrixCalcModule import MatrixCalcModule
+from MessageType import MessageType as MT
 
 
 class Socket:
@@ -24,8 +25,7 @@ class Server(Socket):
         udp_socket.setblocking(False)
         udp_socket.settimeout(1)
 
-        server_thread = Thread(target=self.threads.server_main_cycle_thread, args=(self,
-                                                                                   udp_socket,))
+        server_thread = Thread(target=self.threads.server_main_cycle_thread, args=(self, udp_socket,))
         server_thread.start()
 
         while self.threads.server_connection:
@@ -43,6 +43,7 @@ class Server(Socket):
 class Client(Socket):
     def __init__(self):
         Socket.__init__(self)
+        self.start_flows_immediately = True  # change to False if need start flows by command
         self.map_name = None
         self.id = None
         self.pos = None
@@ -63,14 +64,14 @@ class Client(Socket):
 
         self.map_storage.getChunkGridFormFile(self.map_name)
         self.target_list, self.pos = self.map_storage.getBotTargetCoords()
-        send_message(udp_socket, self.address, self.id, 'server', 4, 'client_hello_msg')
+        send_message(udp_socket, self.address, self.id, 'server', MT.CLIENT_HELLO_REQUEST, 'client_hello_msg')
         print "Hello msg to server sent"
 
         print "start request_thread"
-        request_thread = Thread(target=self.threads.request_waiting_thread, args=(self,
-                                                                                  udp_socket,
-                                                                                  return_queue,))
+        request_thread = Thread(target=self.threads.request_waiting_thread,
+                                args=(self, udp_socket, return_queue,))
         request_thread.start()
+        self.start_flows(udp_socket)
 
         while self.threads.client_connection:
             user_input = raw_input("Input command: ")
@@ -79,7 +80,7 @@ class Client(Socket):
 
     def process_user_input(self, user_input, udp_socket):
         if user_input == "quit":
-            send_message(udp_socket, self.address, self.id, 'server', 1, "quit")
+            send_message(udp_socket, self.address, self.id, 'server', MT.CLIENT_QUIT, "quit")
             self.threads.client_connection = False
             print "close connection client"
             return
@@ -127,7 +128,8 @@ class Client(Socket):
                 print "map flow is already started"
                 return
             self.threads.map_traffic_flow_thread_is_run = True
-            self.map_traffic_flow_thread = Thread(target=self.threads.map_traffic_flow_thread, args=(self, udp_socket,))
+            self.map_traffic_flow_thread = Thread(target=self.threads.map_traffic_flow_thread,
+                                                  args=(self, udp_socket,))
             self.map_traffic_flow_thread.start()
             print "map flow is start"
             return
@@ -146,7 +148,8 @@ class Client(Socket):
                 print "map update flow is already started"
                 return
             self.threads.update_traffic_flow_thread_is_run = True
-            self.update_traffic_flow_thread = Thread(target=self.threads.update_traffic_flow_thread, args=(self, udp_socket,))
+            self.update_traffic_flow_thread = Thread(target=self.threads.update_traffic_flow_thread,
+                                                     args=(self, udp_socket,))
             self.update_traffic_flow_thread.start()
             print "map update flow is start"
             return
@@ -160,9 +163,34 @@ class Client(Socket):
             print "map update flow is stop"
             return
 
+    def start_flows(self, udp_socket):
+        if self.start_flows_immediately:
+            self.start_map_flow(udp_socket)
+            self.start_update_flow(udp_socket)
+
+    def start_map_flow(self, udp_socket):
+        if self.threads.map_traffic_flow_thread_is_run:
+            print "map flow is already started"
+            return
+        self.threads.map_traffic_flow_thread_is_run = True
+        self.map_traffic_flow_thread = Thread(target=self.threads.map_traffic_flow_thread,
+                                              args=(self, udp_socket,))
+        self.map_traffic_flow_thread.start()
+        print "map flow is start"
+
+    def start_update_flow(self, udp_socket):
+        if self.threads.update_traffic_flow_thread_is_run:
+            print "map update flow is already started"
+            return
+        self.threads.update_traffic_flow_thread_is_run = True
+        self.update_traffic_flow_thread = Thread(target=self.threads.update_traffic_flow_thread,
+                                                 args=(self, udp_socket,))
+        self.update_traffic_flow_thread.start()
+        print "map update flow is start"
+
     def bots_matrix_tring_request(self, udp_socket):
         request_data = str(self.target_dstr_storage.getSelfMatrixString())
-        send_message(udp_socket, self.address, self.id, 'all', 7, request_data)
+        send_message(udp_socket, self.address, self.id, 'all', MT.MATRIX_STRING_REQUEST, request_data)
 
     def get_map(self):
         handle = open(self.map_name, "r")
@@ -172,16 +200,16 @@ class Client(Socket):
 
     def send_map(self, udp_socket):
         map_data = self.get_map()
-        send_message(udp_socket, self.address, self.id, 'all', 3, map_data)
+        send_message(udp_socket, self.address, self.id, 'all', MT.SEND_MAP, map_data)
 
     # sepparate method to send map in delay without logs
     def send_map_flow(self, udp_socket):
         map_data = self.get_map()
-        send_message(udp_socket, self.address, self.id, 'all', 11, map_data)
+        send_message(udp_socket, self.address, self.id, 'all', MT.SEND_MAP_NOLOG, map_data)
 
     def update_map(self, udp_socket):
         map_chunks = self.map_storage.getChunksGrid()
-        send_message(udp_socket, self.address, self.id, 'all', 2, [map_chunks, self.pos])
+        send_message(udp_socket, self.address, self.id, 'all', MT.MAP_UPDATE_REQUEST, [map_chunks, self.pos])
 
 
 def select_map_file():

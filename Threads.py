@@ -4,10 +4,13 @@ import socket
 import time
 from threading import Thread
 from Message import Message
+from MessageType import MessageType as MT
 import ast
 
-MAP_TYPE_MESSAGES = [2, 3, 5, 11]
+MAP_TYPE_MESSAGES = [3, 11]
+MAP_UPDATE_MESSAGES = [2, 5]
 FLOW_TIMEOUT = 5.0
+
 
 class Threads:
     def __init__(self):
@@ -63,15 +66,15 @@ class Threads:
         new_message = messages_queue.get()
         addr = new_message.keys()[0]
         msg = new_message[addr].split('/ ')
-        recive_msg = Message(msg)
-        receive_log(recive_msg, addr)
+        receive_msg = Message(msg)
+        receive_log(receive_msg, addr)
 
-        if recive_msg.msg_type == 0:  # server_quit
+        if receive_msg.msg_type == MT.SERVER_QUIT:  # server_quit
             self.client_connection = False
             return
 
-        if recive_msg.msg_type == 2:  # map_update_request
-            rcv_map, rcv_pos = ast.literal_eval(recive_msg.msg_data)
+        if receive_msg.msg_type == MT.MAP_UPDATE_REQUEST:  # map_update_request
+            rcv_map, rcv_pos = ast.literal_eval(receive_msg.msg_data)
             client_object.map_storage.getChunkGridFormFile(client_object.map_name)
             self_map = client_object.map_storage.getChunksGrid()
             map_differ = client_object.map_storage.getDifferBetweenMap(rcv_map, self_map)
@@ -86,26 +89,27 @@ class Threads:
                     print 'differ disagreement'
                     file_map_update(client_object.map_storage, client_object.map_name)
                     self_map = client_object.map_storage.getChunksGrid()
-                    send_message(udp_socket, address, client_object.id, "all", 2, [self_map, client_object.pos])
+                    send_message(udp_socket, address, client_object.id, "all", MT.MAP_UPDATE_REQUEST,
+                                 [self_map, client_object.pos])
                     print('send new map update')
                     return
             else:
                 print 'no differ'
                 return
 
-        if recive_msg.msg_type == 3:  # send_map
-            print "get map: \n%s\n" % recive_msg.msg_data
+        if receive_msg.msg_type == MT.SEND_MAP:  # send_map
+            print "get map: \n%s\n" % receive_msg.msg_data
             return
 
-        if recive_msg.msg_type == 5:  # map_update_response
-            file_map_update_from_response(client_object.map_storage, client_object.map_name, recive_msg.msg_data)
+        if receive_msg.msg_type == MT.MAP_UPDATE_RESPONSE:  # map_update_response
+            file_map_update_from_response(client_object.map_storage, client_object.map_name, receive_msg.msg_data)
             return
 
-        if recive_msg.msg_type == 6:  # server_hello_response
-            return_queue.put(recive_msg.msg_data)
+        if receive_msg.msg_type == MT.SERVER_HELLO_RESPONSE:  # server_hello_response
+            return_queue.put(receive_msg.msg_data)
             return
 
-        if recive_msg.msg_type == 7:  # matrix_string_request
+        if receive_msg.msg_type == MT.MATRIX_STRING_REQUEST:  # matrix_string_request
             for trg_pos in client_object.target_list:
                 a_star_wave = client_object.map_storage.AStar(client_object.pos, trg_pos, [])
                 path = client_object.map_storage.getPathFromDistance(a_star_wave, trg_pos, [])
@@ -115,24 +119,24 @@ class Threads:
                                                                    client_object.id,
                                                                    client_object.target_list,
                                                                    100)
-            client_object.target_dstr_storage.appendMatrixString(ast.literal_eval(recive_msg.msg_data), recive_msg.id)
+            client_object.target_dstr_storage.appendMatrixString(ast.literal_eval(receive_msg.msg_data), receive_msg.id)
             client_object.target_dstr_storage.setDroneTargetsPathTimes(client_object.trg_path, 10, 45)
             client_object.target_dstr_storage.selfStringMatrixCalculation(client_object.id)
-            client_object.target_dstr_storage.setBotCurrentCharge(recive_msg.id, 100)
+            client_object.target_dstr_storage.setBotCurrentCharge(receive_msg.id, 100)
             response_data = str(client_object.target_dstr_storage.getSelfMatrixString())
-            send_message(udp_socket, address, client_object.id, "all", 8, response_data)
+            send_message(udp_socket, address, client_object.id, "all", MT.SEND_MATRIX_STRING, response_data)
             print 'matrix string send'
             self.matrixCalc(client_object)
             return
 
-        if recive_msg.msg_type == 8:  # send_matrix_string
-            client_object.target_dstr_storage.appendMatrixString(ast.literal_eval(recive_msg.msg_data), recive_msg.id)
-            client_object.target_dstr_storage.setBotCurrentCharge(recive_msg.id, 100)
+        if receive_msg.msg_type == MT.SEND_MATRIX_STRING:  # send_matrix_string
+            client_object.target_dstr_storage.appendMatrixString(ast.literal_eval(receive_msg.msg_data), receive_msg.id)
+            client_object.target_dstr_storage.setBotCurrentCharge(receive_msg.id, 100)
             self.matrixCalc(client_object)
             return
 
-        if recive_msg.msg_type == 9:  # ids_update
-            client_object.drone_ids = ast.literal_eval(recive_msg.msg_data)
+        if receive_msg.msg_type == MT.IDS_UPDATE:  # ids_update
+            client_object.drone_ids = ast.literal_eval(receive_msg.msg_data)
             print 'get new id list', client_object.drone_ids
             return
 
@@ -168,20 +172,20 @@ class Threads:
         receive_log(receive_msg, addr)
 
         if receive_msg.response_type == 'server':
-            if receive_msg.msg_type == 1:
+            if receive_msg.msg_type == MT.CLIENT_QUIT:
                 self.address_list.remove(addr)
                 self.bot_ids_list.remove(str(addr[1]))
                 for send_addr in self.address_list:
-                    send_message(udp_socket, send_addr, 'server', 'ids_update', 9, str(self.bot_ids_list))
+                    send_message(udp_socket, send_addr, 'server', 'ids_update', MT.IDS_UPDATE, str(self.bot_ids_list))
                 return
 
-            if receive_msg.msg_type == 4:
+            if receive_msg.msg_type == MT.CLIENT_HELLO_REQUEST:
                 if addr not in self.address_list:
                     self.address_list.append(addr)
                 self.bot_ids_list.append(str(addr[1]))
-                send_message(udp_socket, addr, 'server', 'server_response', 6, str(addr[1]))
+                send_message(udp_socket, addr, 'server', 'server_response', MT.SERVER_HELLO_RESPONSE, str(addr[1]))
                 for send_addr in self.address_list:
-                    send_message(udp_socket, send_addr, 'server', 'ids_update', 9, str(self.bot_ids_list))
+                    send_message(udp_socket, send_addr, 'server', 'ids_update', MT.IDS_UPDATE, str(self.bot_ids_list))
                 return
 
         if receive_msg.response_type == 'all':
@@ -194,7 +198,7 @@ class Threads:
     def close_server_connection(self, udp_socket):
         # close server-clinet connections
         for addr in self.address_list:
-            send_message(udp_socket, addr, 'server', "all", 0, "server_quit")
+            send_message(udp_socket, addr, 'server', "all", MT.SERVER_QUIT, "server_quit")
 
 
 def send_message(udp_socket, addr, bot_id, response_type, msg_type, msg_data):
@@ -206,6 +210,8 @@ def send_message(udp_socket, addr, bot_id, response_type, msg_type, msg_data):
 def receive_log(recive_msg, addr):
     if recive_msg.msg_type in MAP_TYPE_MESSAGES:
         print('from %s received %s' % (addr, 'map'))
+    elif recive_msg.msg_type in MAP_UPDATE_MESSAGES:
+        print('from %s received %s' % (addr, 'map update'))
     else:
         print('from %s received %s' % (addr, recive_msg.msg_data))
 
@@ -213,6 +219,8 @@ def receive_log(recive_msg, addr):
 def send_log(recive_msg, sendAddr):
     if recive_msg.msg_type in MAP_TYPE_MESSAGES:
         print('Send %s to %s' % ("map", sendAddr))
+    elif recive_msg.msg_type in MAP_UPDATE_MESSAGES:
+        print('Send %s to %s' % ('map update', sendAddr))
     else:
         print('Send %s to %s' % (str.encode(recive_msg.get_mes()), sendAddr))
 
