@@ -53,8 +53,8 @@ class Client(Socket):
         self.drone_ids = []
         self.trg_path = {}
 
-        self.map_traffic_flow_thread = None
         self.update_traffic_flow_thread = None
+        self.target_distribution_flow_thread = None
 
     def run_client(self):
         return_queue = Queue.Queue()
@@ -110,37 +110,27 @@ class Client(Socket):
             return
 
         if user_input == "trg_dst":
-
-            for trg_pos in self.target_list:
-                a_star_wafe = self.map_storage.AStar(self.pos, trg_pos, [])
-                path = self.map_storage.getPathFromDistance(a_star_wafe, trg_pos, [])
-                self.trg_path[trg_pos] = path
-
-            self.target_dstr_storage.initSelfMatrixValues(self.drone_ids, self.id, self.target_list, 100)
-            self.target_dstr_storage.setDroneTargetsPathTimes(self.trg_path, 10, 45)
-            self.target_dstr_storage.selfStringMatrixCalculation(self.id)
-            self.bots_matrix_tring_request(udp_socket)
-            print "bots matrix string request sent"
+            self.target_distribution(udp_socket)
             return
 
-        if user_input == "start_map_flow":
-            if self.threads.map_traffic_flow_thread_is_run:
-                print "map flow is already started"
+        if user_input == "start_td_flow":
+            if self.threads.target_distribution_flow_thread_is_run:
+                print "target distribution is already started"
                 return
-            self.threads.map_traffic_flow_thread_is_run = True
-            self.map_traffic_flow_thread = Thread(target=self.threads.map_traffic_flow_thread,
-                                                  args=(self, udp_socket,))
-            self.map_traffic_flow_thread.start()
-            print "map flow is start"
+            self.threads.target_distribution_flow_thread_is_run = True
+            self.target_distribution_flow_thread = Thread(target=self.threads.target_distribution_flow_thread,
+                                                          args=(self, udp_socket,))
+            self.target_distribution_flow_thread.start()
+            print "target distribution is start"
             return
 
-        if user_input == "stop_map_flow":
-            if not self.threads.map_traffic_flow_thread_is_run:
-                print "map flow is not start"
+        if user_input == "stop_td_flow":
+            if not self.threads.target_distribution_flow_thread_is_run:
+                print "target distribution is not start"
                 return
-            self.threads.map_traffic_flow_thread_is_run = False
-            self.map_traffic_flow_thread.join()
-            print "map flow is stop"
+            self.threads.target_distribution_flow_thread_is_run = False
+            self.target_distribution_flow_thread.join()
+            print "target distribution is stop"
             return
 
         if user_input == "start_update_flow":
@@ -165,18 +155,8 @@ class Client(Socket):
 
     def start_flows(self, udp_socket):
         if self.start_flows_immediately:
-            self.start_map_flow(udp_socket)
             self.start_update_flow(udp_socket)
-
-    def start_map_flow(self, udp_socket):
-        if self.threads.map_traffic_flow_thread_is_run:
-            print "map flow is already started"
-            return
-        self.threads.map_traffic_flow_thread_is_run = True
-        self.map_traffic_flow_thread = Thread(target=self.threads.map_traffic_flow_thread,
-                                              args=(self, udp_socket,))
-        self.map_traffic_flow_thread.start()
-        print "map flow is start"
+            self.start_target_distribution_flow(udp_socket)
 
     def start_update_flow(self, udp_socket):
         if self.threads.update_traffic_flow_thread_is_run:
@@ -188,7 +168,17 @@ class Client(Socket):
         self.update_traffic_flow_thread.start()
         print "map update flow is start"
 
-    def bots_matrix_tring_request(self, udp_socket):
+    def start_target_distribution_flow(self, udp_socket):
+        if self.threads.target_distribution_flow_thread_is_run:
+            print "target distribution flow is already started"
+            return
+        self.threads.target_distribution_flow_thread_is_run = True
+        self.target_distribution_flow_thread = Thread(target=self.threads.target_distribution_flow_thread,
+                                                      args=(self, udp_socket,))
+        self.target_distribution_flow_thread.start()
+        print "target distribution flow is start"
+
+    def bots_matrix_string_request(self, udp_socket):
         request_data = str(self.target_dstr_storage.getSelfMatrixString())
         send_message(udp_socket, self.address, self.id, 'all', MT.MATRIX_STRING_REQUEST, request_data)
 
@@ -210,6 +200,20 @@ class Client(Socket):
     def update_map(self, udp_socket):
         map_chunks = self.map_storage.getChunksGrid()
         send_message(udp_socket, self.address, self.id, 'all', MT.MAP_UPDATE_REQUEST, [map_chunks, self.pos])
+
+    def target_distribution(self, udp_socket):
+        self.map_storage.getChunkGridFormFile(self.map_name)
+        self.target_list, self.pos = self.map_storage.getBotTargetCoords()
+
+        for trg_pos in self.target_list:
+            a_star_wave = self.map_storage.AStar(self.pos, trg_pos, [])
+            path = self.map_storage.getPathFromDistance(a_star_wave, trg_pos, [])
+            self.trg_path[trg_pos] = path
+        self.target_dstr_storage.initSelfMatrixValues(self.drone_ids, self.id, self.target_list, 100)
+        self.target_dstr_storage.setDroneTargetsPathTimes(self.trg_path, 10, 45)
+        self.target_dstr_storage.selfStringMatrixCalculation(self.id)
+        self.bots_matrix_string_request(udp_socket)
+        print "bots matrix string request sent"
 
 
 def select_map_file():

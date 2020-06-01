@@ -527,7 +527,6 @@ class Map:
         fileContent = f.read().split('\n')
         if fileContent[-1] == '':
             fileContent.remove('')
-
         countOfLine = len(fileContent)
         countOfSymbolInLine = len(fileContent[0])
         for lineNumb in range(countOfLine):
@@ -535,6 +534,7 @@ class Map:
                 symbol = fileContent[lineNumb][symbolNumb]
                 self.setBitCell((symbolNumb, lineNumb), SYMBOL_TO_BIT_DICT[symbol])
         f.close()
+
         return self._chunks
 
     def getBotTargetCoords(self):
@@ -659,7 +659,6 @@ class Map:
         return optimizePathToGoal
 
     def AStar(self, botPosition, goal, banedCells):
-
         if goal in banedCells:
             banedCells.remove(goal)
         if botPosition in banedCells:
@@ -800,7 +799,7 @@ class Map:
         for neighborCell in neighborCellsList:
             if AStarWave and self.cellIsPassableForAStarWave(neighborCell, banedCells) or \
                     not AStarWave and self.cellIsPassableForChunkWave(neighborCell, banedCells, chunkSize):
-                self.createNeighborChunks(neighborCell)
+                #self.createNeighborChunks(neighborCell) remove to correct issue with
                 neighborsMas.append(neighborCell)
 
             elif not AStarWave and curCell not in self.saveFront.queue:

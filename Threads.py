@@ -16,8 +16,8 @@ class Threads:
     def __init__(self):
         self.server_connection = True
         self.client_connection = True
-        self.map_traffic_flow_thread_is_run = False
         self.update_traffic_flow_thread_is_run = False
+        self.target_distribution_flow_thread_is_run = False
 
         self.address_list = []
         self.bot_ids_list = []
@@ -47,20 +47,22 @@ class Threads:
                     client_object.drone_ids = [client_object.id]
                     print 'Get unique id from serve: %s' % client_object.id
 
-    def map_traffic_flow_thread(self, client_object, udp_socket):
-        while self.map_traffic_flow_thread_is_run:
-            if not self.client_connection:
-                break
-            time.sleep(FLOW_TIMEOUT + random.randint(0, 2))
-            client_object.send_map_flow(udp_socket)
-
     def update_traffic_flow_thread(self, client_object, udp_socket):
         while self.update_traffic_flow_thread_is_run:
             if not self.client_connection:
+                self.update_traffic_flow_thread_is_run = False
                 break
             time.sleep(FLOW_TIMEOUT + random.randint(0, 2))
             client_object.map_storage.getChunksFromFile(client_object.map_name)
             client_object.update_map(udp_socket)
+
+    def target_distribution_flow_thread(self, client_object, udp_socket):
+        while self.target_distribution_flow_thread_is_run:
+            if not self.client_connection:
+                self.target_distribution_flow_thread_is_run = False
+                break
+            time.sleep(FLOW_TIMEOUT + random.randint(0, 2))
+            client_object.target_distribution(udp_socket)
 
     def message_queue_process_client(self, messages_queue, return_queue, client_object, udp_socket, address):
         new_message = messages_queue.get()
@@ -137,11 +139,12 @@ class Threads:
 
         if receive_msg.msg_type == MT.IDS_UPDATE:  # ids_update
             client_object.drone_ids = ast.literal_eval(receive_msg.msg_data)
+            client_object.target_dstr_storage.removeWasteStringFromMatrix(client_object.drone_ids)
             print 'get new id list', client_object.drone_ids
             return
 
     def matrixCalc(self, client_object):
-        if client_object.target_dstr_storage.checkCountOfDroneTarget():
+        if client_object.target_dstr_storage.checkCountOfDroneTarget(client_object.drone_ids):
             client_object.target_dstr_storage.matrixCalc()
             client_object.target_dstr_storage.printTargetForDrone()
             my_target = client_object.target_dstr_storage.getSelfTarget(client_object.id)
