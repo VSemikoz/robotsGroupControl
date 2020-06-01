@@ -113,24 +113,24 @@ class Client(Socket):
             self.target_distribution(udp_socket)
             return
 
-        if user_input == "start_map_flow":
-            if self.threads.map_traffic_flow_thread_is_run:
-                print "map flow is already started"
+        if user_input == "start_td_flow":
+            if self.threads.target_distribution_flow_thread_is_run:
+                print "target distribution is already started"
                 return
-            self.threads.map_traffic_flow_thread_is_run = True
-            self.map_traffic_flow_thread = Thread(target=self.threads.map_traffic_flow_thread,
-                                                  args=(self, udp_socket,))
-            self.map_traffic_flow_thread.start()
-            print "map flow is start"
+            self.threads.target_distribution_flow_thread_is_run = True
+            self.target_distribution_flow_thread = Thread(target=self.threads.target_distribution_flow_thread,
+                                                          args=(self, udp_socket,))
+            self.target_distribution_flow_thread.start()
+            print "target distribution is start"
             return
 
-        if user_input == "stop_map_flow":
-            if not self.threads.map_traffic_flow_thread_is_run:
-                print "map flow is not start"
+        if user_input == "stop_td_flow":
+            if not self.threads.target_distribution_flow_thread_is_run:
+                print "target distribution is not start"
                 return
-            self.threads.map_traffic_flow_thread_is_run = False
-            self.map_traffic_flow_thread.join()
-            print "map flow is stop"
+            self.threads.target_distribution_flow_thread_is_run = False
+            self.target_distribution_flow_thread.join()
+            print "target distribution is stop"
             return
 
         if user_input == "start_update_flow":

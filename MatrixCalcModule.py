@@ -29,6 +29,7 @@ class MatrixCalcModule:
         return self.selfMatrixString
 
     def setDroneIds(self, IDs):
+        self.IDs = []
         for ID in IDs:
             if ID not in self.IDs:
                 self.IDs.append(ID)
@@ -164,10 +165,10 @@ class MatrixCalcModule:
                 for i in range(self.countOfTarget - len(self.matrixCoefficient[stringNumber])):
                     self.matrixCoefficient[stringNumber].append(0)
 
-    def checkCountOfDroneTarget(self):
+    def checkCountOfDroneTarget(self, IDs):
+        self.setDroneIds(IDs)
         self.setCountOdDrone()
         self.setCountOfTarget()
-
         if len(self.botIDMatrixString.values()[0]) == self.countOfTarget and \
                 len(self.botIDMatrixString) == self.countOfDrones:
             self.appendMatrixStrings()
@@ -198,6 +199,11 @@ class MatrixCalcModule:
 
                 else:
                     self.targetForDrone[self.IDs[drone]] = None
+
+    def removeWasteStringFromMatrix(self, IDs):
+        for k in self.botIDMatrixString.keys():
+            if k not in IDs:
+                self.botIDMatrixString.pop(k)
 
     def appendTargetForDrone(self, selectDrone, selectTargetIndex):
         self.targetForDrone[self.IDs[selectDrone]] = self.targetIDs[selectTargetIndex]

@@ -139,11 +139,12 @@ class Threads:
 
         if receive_msg.msg_type == MT.IDS_UPDATE:  # ids_update
             client_object.drone_ids = ast.literal_eval(receive_msg.msg_data)
+            client_object.target_dstr_storage.removeWasteStringFromMatrix(client_object.drone_ids)
             print 'get new id list', client_object.drone_ids
             return
 
     def matrixCalc(self, client_object):
-        if client_object.target_dstr_storage.checkCountOfDroneTarget():
+        if client_object.target_dstr_storage.checkCountOfDroneTarget(client_object.drone_ids):
             client_object.target_dstr_storage.matrixCalc()
             client_object.target_dstr_storage.printTargetForDrone()
             my_target = client_object.target_dstr_storage.getSelfTarget(client_object.id)
